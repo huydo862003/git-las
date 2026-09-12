@@ -1,102 +1,52 @@
-use clap::{Parser, Subcommand};
+mod cli;
+mod cmd;
+mod git;
+mod gitlas;
+mod logger;
 
-#[derive(Parser)]
-#[command(name = "git-las", bin_name = "git las")]
-#[command(about = "A git multiplexer - sync repos across multiple providers")]
-#[command(version, infer_subcommands = true)]
-struct Cli {
-  #[command(subcommand)]
-  command: Command,
-}
+use clap::Parser;
 
-#[derive(Subcommand)]
-enum Command {
-  /// Initialize git-lase config
-  Init,
+use cli::{Cli, Command, RemoteCommand, RepoCommand, RepoRemoteCommand, RepoSetCommand};
 
-  /// Manage git providers
-  #[command(subcommand)]
-  Provider(ProviderCommand),
-
-  /// Manage tracked repos
-  #[command(subcommand)]
-  Repo(RepoCommand),
-
-  /// Push all tracked repos to all their remotes
-  Push,
-
-  /// Pull all tracked repos from all their remotes
-  Pull,
-}
-
-#[derive(Subcommand)]
-enum ProviderCommand {
-  /// Add a git provider
-  Add {
-    /// Provider name (e.g. github, gitlab, gitea)
-    name: String,
-    /// Base URL (e.g. https://github.com, https://gitlab.com)
-    url: String,
-    /// Username or organization on this provider
-    user: String,
-    /// Auth token
-    #[arg(long)]
-    token: Option<String>,
-  },
-
-  /// List configured providers
-  Ls,
-
-  /// Remove a provider
-  Rm {
-    /// Provider name to remove
-    name: String,
-  },
-}
-
-#[derive(Subcommand)]
-enum RepoCommand {
-  /// Add a repo to track
-  Add {
-    /// Path to the local git repo (defaults to current directory)
-    #[arg(default_value = ".")]
-    path: String,
-    /// Only track against specific providers (defaults to all)
-    #[arg(long, value_delimiter = ',')]
-    providers: Vec<String>,
-  },
-
-  /// Remove a tracked repo
-  Rm {
-    /// Path to the local git repo (defaults to current directory)
-    #[arg(default_value = ".")]
-    path: String,
-  },
-
-  /// List all tracked repos and their remotes
-  Ls,
-
-  /// Show git status of all tracked repos
-  Status,
-}
-
-fn main() {
+fn main() -> anyhow::Result<()> {
   let cli = Cli::parse();
 
   match cli.command {
-    Command::Init => todo!(),
-    Command::Provider(cmd) => match cmd {
-      ProviderCommand::Add { .. } => todo!(),
-      ProviderCommand::Ls => todo!(),
-      ProviderCommand::Rm { .. } => todo!(),
+    Command::Init => cmd::init::run()?,
+    Command::Remote(cmd) => match cmd {
+      RemoteCommand::Add {
+        name,
+        url,
+        user,
+        token,
+      } => cmd::remote::add::run(name, url, user, token)?,
+      RemoteCommand::Ls => cmd::remote::ls::run()?,
+      RemoteCommand::Rm { name } => cmd::remote::rm::run(name)?,
     },
     Command::Repo(cmd) => match cmd {
-      RepoCommand::Add { .. } => todo!(),
-      RepoCommand::Rm { .. } => todo!(),
-      RepoCommand::Ls => todo!(),
-      RepoCommand::Status => todo!(),
+      RepoCommand::Add { path } => cmd::repo::add::run(path)?,
+      RepoCommand::Rm => cmd::repo::rm::run()?,
+      RepoCommand::Ls => cmd::repo::ls::run()?,
+      RepoCommand::Status => cmd::repo::status::run()?,
+      RepoCommand::Remote(cmd) => match cmd {
+        RepoRemoteCommand::Add {
+          remote,
+          repo,
+          user,
+          primary,
+        } => cmd::repo::remote::add::run(remote, repo, user, primary)?,
+        RepoRemoteCommand::Rm { remote } => cmd::repo::remote::rm::run(remote)?,
+        RepoRemoteCommand::Ls => cmd::repo::remote::ls::run()?,
+      },
+      RepoCommand::Set(cmd) => match cmd {
+        RepoSetCommand::Primary { remote, repo, user } => {
+          cmd::repo::set::primary::run(remote, repo, user)?
+        }
+      },
     },
-    Command::Push => todo!(),
-    Command::Pull => todo!(),
+    Command::Push => cmd::push::run()?,
+    Command::Pull => cmd::pull::run()?,
   }
+
+  Ok(())
 }

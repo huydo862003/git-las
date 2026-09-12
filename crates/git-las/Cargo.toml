@@ -10,4 +10,9 @@ name = "git-las"
 path = "src/main.rs"
 
 [dependencies]
+anyhow = "1.0.104"
 clap = { version = "4.6.6", features = ["derive"] }
+indicatif = "0.18.6"
+owo-colors = "4.4.0"
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.1.6"
