@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <!-- DNA double helix strands -->
+  <path d="M40 16 Q64 40 88 64 Q64 88 40 112" stroke="#4a9eff" stroke-width="4" stroke-linecap="round" fill="none" />
+  <path d="M88 16 Q64 40 40 64 Q64 88 88 112" stroke="#4a9eff" stroke-width="4" stroke-linecap="round" fill="none" />
+  <!-- Base pairs (ligase joining) -->
+  <line x1="64" y1="40" x2="64" y2="40" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" />
+  <line x1="52" y1="52" x2="76" y2="52" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" />
+  <line x1="46" y1="64" x2="82" y2="64" stroke="#1a6fdd" stroke-width="4" stroke-linecap="round" />
+  <line x1="52" y1="76" x2="76" y2="76" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" />
+  <line x1="64" y1="88" x2="64" y2="88" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" />
+  <!-- Git branch dot at junction -->
+  <circle cx="64" cy="64" r="6" fill="#4a9eff" />
+</svg>

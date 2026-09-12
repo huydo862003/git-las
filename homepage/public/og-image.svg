@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#0d1117" />
+  <!-- DNA double helix -->
+  <path d="M300 100 Q600 250 900 400" stroke="#4a9eff" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M900 100 Q600 250 300 400" stroke="#4a9eff" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.8" />
+  <!-- Base pairs -->
+  <line x1="440" y1="152" x2="760" y2="152" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" opacity="0.5" />
+  <line x1="370" y1="200" x2="830" y2="200" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" opacity="0.5" />
+  <line x1="330" y1="250" x2="870" y2="250" stroke="#1a6fdd" stroke-width="5" stroke-linecap="round" />
+  <line x1="370" y1="300" x2="830" y2="300" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" opacity="0.5" />
+  <line x1="440" y1="348" x2="760" y2="348" stroke="#7fbfff" stroke-width="3" stroke-linecap="round" opacity="0.5" />
+  <!-- Junction node -->
+  <circle cx="600" cy="250" r="18" fill="#4a9eff" />
+  <!-- Title -->
+  <text x="600" y="510" text-anchor="middle" font-family="monospace" font-size="72" font-weight="bold" fill="white">git-lase</text>
+  <text x="600" y="570" text-anchor="middle" font-family="monospace" font-size="24" fill="#8b949e">sync git repos across multiple providers</text>
+</svg>

@@ -1,0 +1,18 @@
+{
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "cargo build --release",
+    "test": "cargo test",
+    "lint": "cargo clippy --workspace -- -D warnings",
+    "lint:fix": "cargo clippy --workspace --fix --allow-dirty",
+    "fmt": "cargo fmt --all",
+    "fmt:check": "cargo fmt --all -- --check",
+    "doc": "pnpm --filter @git-lase/homepage run build",
+    "doc:dev": "pnpm --filter @git-lase/homepage run dev",
+    "doc:preview": "pnpm --filter @git-lase/homepage run preview"
+  },
+  "devDependencies": {
+    "typerighter": "0.30.6"
+  }
+}

@@ -1,0 +1,8 @@
+version: "1.0.0"
+vault:
+  root_dir: "vault"
+repo: "https://github.com/huydo862003/git-lase"
+site:
+  title: "git-lase"
+  description: "Sync git repos across multiple providers"
+  base_path: "/git-lase"
