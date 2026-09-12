@@ -27,7 +27,6 @@ enum Command {
 
   /// Pull all tracked repos from all their remotes
   Pull,
-
 }
 
 #[derive(Subcommand)]
