@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "git-lase", bin_name = "git lase")]
 #[command(about = "A git multiplexer - sync repos across multiple providers")]
-#[command(version)]
+#[command(version, infer_subcommands = true)]
 struct Cli {
   #[command(subcommand)]
   command: Command,
