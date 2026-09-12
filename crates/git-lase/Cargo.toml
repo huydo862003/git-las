@@ -8,3 +8,6 @@ description = "Sync git repos across multiple providers"
 [[bin]]
 name = "git-lase"
 path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6.6", features = ["derive"] }
