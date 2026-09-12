@@ -1,8 +1,8 @@
 version: "1.0.0"
 vault:
   root_dir: "vault"
-repo: "https://github.com/huydo862003/git-lase"
+repo: "https://github.com/huydo862003/git-las"
 site:
-  title: "git-lase"
+  title: "git-las"
   description: "Sync git repos across multiple providers"
-  base_path: "/git-lase"
+  base_path: "/git-las"

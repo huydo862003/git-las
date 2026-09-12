@@ -34,21 +34,21 @@
           cargo = rust-stable;
           rustc = rust-stable;
         };
-        git-lase = rustPlatform.buildRustPackage {
-          pname = "git-lase";
+        git-las = rustPlatform.buildRustPackage {
+          pname = "git-las";
           version = "0.1.0";
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
           cargoBuildFlags = [
             "-p"
-            "git-lase"
+            "git-las"
           ];
           doCheck = false;
         };
       in
       {
-        packages.git-lase = git-lase;
-        packages.default = git-lase;
+        packages.git-las = git-las;
+        packages.default = git-las;
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [

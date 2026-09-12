@@ -1,12 +1,12 @@
 [package]
-name = "git-lase"
+name = "git-las"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 description = "Sync git repos across multiple providers"
 
 [[bin]]
-name = "git-lase"
+name = "git-las"
 path = "src/main.rs"
 
 [dependencies]

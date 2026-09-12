@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "git-lase", bin_name = "git lase")]
+#[command(name = "git-las", bin_name = "git las")]
 #[command(about = "A git multiplexer - sync repos across multiple providers")]
 #[command(version, infer_subcommands = true)]
 struct Cli {
@@ -46,10 +46,10 @@ enum ProviderCommand {
   },
 
   /// List configured providers
-  List,
+  Ls,
 
   /// Remove a provider
-  Remove {
+  Rm {
     /// Provider name to remove
     name: String,
   },
@@ -75,7 +75,7 @@ enum RepoCommand {
   },
 
   /// List all tracked repos and their remotes
-  List,
+  Ls,
 
   /// Show git status of all tracked repos
   Status,
@@ -88,13 +88,13 @@ fn main() {
     Command::Init => todo!(),
     Command::Provider(cmd) => match cmd {
       ProviderCommand::Add { .. } => todo!(),
-      ProviderCommand::List => todo!(),
-      ProviderCommand::Remove { .. } => todo!(),
+      ProviderCommand::Ls => todo!(),
+      ProviderCommand::Rm { .. } => todo!(),
     },
     Command::Repo(cmd) => match cmd {
       RepoCommand::Add { .. } => todo!(),
       RepoCommand::Rm { .. } => todo!(),
-      RepoCommand::List => todo!(),
+      RepoCommand::Ls => todo!(),
       RepoCommand::Status => todo!(),
     },
     Command::Push => todo!(),
