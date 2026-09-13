@@ -1,4 +1,4 @@
-//! Bitbucket provider reads tokens from the bb CLI config
+//! Bitbucket provider: reads tokens from the bb CLI config, creates repos via API
 
 use std::fs;
 
@@ -14,6 +14,48 @@ impl GitProvider for Bitbucket {
     let content = fs::read_to_string(path).ok()?;
     let config: BbConfig = toml::from_str(&content).ok()?;
     config.auth?.token
+  }
+
+  fn ensure_repo_exists(
+    &self,
+    token: &str,
+    user: &str,
+    repo: &str,
+    private: bool,
+  ) -> anyhow::Result<()> {
+    let api = "https://api.bitbucket.org/2.0";
+    let client = reqwest::blocking::Client::new();
+
+    // Check existence
+    let check = client
+      .get(format!("{api}/repositories/{user}/{repo}"))
+      .bearer_auth(token)
+      .header("User-Agent", "git-las")
+      .send()?;
+
+    if check.status().is_success() {
+      return Ok(());
+    }
+
+    let body = serde_json::json!({
+      "scm": "git",
+      "is_private": private,
+    });
+
+    let resp = client
+      .post(format!("{api}/repositories/{user}/{repo}"))
+      .bearer_auth(token)
+      .header("User-Agent", "git-las")
+      .json(&body)
+      .send()?;
+
+    let status = resp.status();
+    if status.is_success() {
+      return Ok(());
+    }
+
+    let text = resp.text().unwrap_or_default();
+    anyhow::bail!("Bitbucket create repo failed ({status}): {text}");
   }
 }
 

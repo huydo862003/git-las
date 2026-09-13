@@ -1,7 +1,7 @@
 //! On-demand credential loading
 //!
-//! Tokens are never stored in memory at rest.
-//! `Credential::read` fetches fresh on each call and returns a `SecretString` that zeroes on drop.
+//! Tokens are never stored in memory at rest
+//! `Credential::read` fetches fresh on each call and returns a `SecretString` that zeroes on drop
 //!
 //! Fallback order: env var -> secrets file -> git config -> provider CLI
 
@@ -29,6 +29,17 @@ impl Credential {
     env_var: Option<String>,
   ) -> Self {
     Credential { provider, secrets_path, key, env_var }
+  }
+
+  /// Ensure the repo exists on the provider, creating it if absent
+  /// No-op when no provider is configured for this remote
+  pub fn ensure_repo_exists(&self, user: &str, repo: &str, private: bool) -> anyhow::Result<()> {
+    let Some(provider) = &self.provider else {
+      return Ok(());
+    };
+    use secrecy::ExposeSecret;
+    let token = self.read()?;
+    provider.ensure_repo_exists(token.expose_secret(), user, repo, private)
   }
 
   pub fn read(&self) -> anyhow::Result<SecretString> {

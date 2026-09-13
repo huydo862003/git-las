@@ -49,6 +49,7 @@ pub fn run() -> anyhow::Result<()> {
 
 fn push_remotes(name: &str, remotes: &[GitRemote], path: &Path) -> anyhow::Result<()> {
   for remote in remotes {
+    remote.cred.ensure_repo_exists(&remote.user, name, true)?;
     git::check_remote_exists(path, remote.name.as_str(), &remote.url)?;
     git::push(path, remote.name.as_str(), &remote.cred)?;
     logger::print_ok(&format!("{name} -> {}: push", remote.name));

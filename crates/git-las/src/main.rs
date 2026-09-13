@@ -20,12 +20,25 @@ fn main() -> anyhow::Result<()> {
         url,
         user,
         token,
-      } => cmd::remote::add::run(name, url, user, token)?,
+        force,
+      } => {
+        let mut flags = cmd::remote::add::Flags::empty();
+        if force {
+          flags |= cmd::remote::add::Flags::FORCE;
+        }
+        cmd::remote::add::run(name, url, user, token, flags)?
+      }
       RemoteCommand::Ls => cmd::remote::ls::run()?,
       RemoteCommand::Rm { name } => cmd::remote::rm::run(name)?,
     },
     Command::Repo(cmd) => match cmd {
-      RepoCommand::Add { path } => cmd::repo::add::run(path)?,
+      RepoCommand::Add { path, force } => {
+        let mut flags = cmd::repo::add::Flags::empty();
+        if force {
+          flags |= cmd::repo::add::Flags::FORCE;
+        }
+        cmd::repo::add::run(path, flags)?
+      }
       RepoCommand::Rm => cmd::repo::rm::run()?,
       RepoCommand::Ls => cmd::repo::ls::run()?,
       RepoCommand::Status => cmd::repo::status::run()?,
@@ -35,7 +48,14 @@ fn main() -> anyhow::Result<()> {
           repo,
           user,
           primary,
-        } => cmd::repo::remote::add::run(remote, repo, user, primary)?,
+          force,
+        } => {
+          let mut flags = cmd::repo::remote::add::Flags::empty();
+          if force {
+            flags |= cmd::repo::remote::add::Flags::FORCE;
+          }
+          cmd::repo::remote::add::run(remote, repo, user, primary, flags)?
+        }
         RepoRemoteCommand::Rm { remote } => cmd::repo::remote::rm::run(remote)?,
         RepoRemoteCommand::Ls => cmd::repo::remote::ls::run()?,
       },

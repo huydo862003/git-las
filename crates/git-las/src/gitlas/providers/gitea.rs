@@ -1,4 +1,4 @@
-//! Gitea/Forgejo provider reads tokens from the tea CLI config
+//! Gitea/Forgejo provider: reads tokens from the tea CLI config, creates repos via API
 
 use std::fs;
 
@@ -21,6 +21,60 @@ impl GitProvider for Gitea {
       .into_iter()
       .find(|login| login.url.trim_end_matches('/') == target)?
       .token
+  }
+
+  fn ensure_repo_exists(
+    &self,
+    token: &str,
+    user: &str,
+    repo: &str,
+    private: bool,
+  ) -> anyhow::Result<()> {
+    let api = format!("{}/api/v1", self.base_url.trim_end_matches('/'));
+    let client = reqwest::blocking::Client::new();
+
+    // Check existence
+    let check = client
+      .get(format!("{api}/repos/{user}/{repo}"))
+      .bearer_auth(token)
+      .header("User-Agent", "git-las")
+      .send()?;
+
+    if check.status().is_success() {
+      return Ok(());
+    }
+
+    // Determine whether user is the authenticated account or an org
+    let me: serde_json::Value = client
+      .get(format!("{api}/user"))
+      .bearer_auth(token)
+      .header("User-Agent", "git-las")
+      .send()?
+      .json()?;
+
+    let login = me["login"].as_str().unwrap_or("");
+    let create_url = if login.eq_ignore_ascii_case(user) {
+      format!("{api}/user/repos")
+    } else {
+      format!("{api}/orgs/{user}/repos")
+    };
+
+    let body = serde_json::json!({ "name": repo, "private": private });
+    let resp = client
+      .post(&create_url)
+      .bearer_auth(token)
+      .header("User-Agent", "git-las")
+      .json(&body)
+      .send()?;
+
+    let status = resp.status();
+    if status.is_success() || status.as_u16() == 409 {
+      // 409 Conflict = already exists
+      return Ok(());
+    }
+
+    let text = resp.text().unwrap_or_default();
+    anyhow::bail!("Gitea create repo failed ({status}): {text}");
   }
 }
 
