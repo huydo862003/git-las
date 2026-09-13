@@ -17,6 +17,7 @@ use crate::gitlas::types::RawSecretsFile;
 pub struct Credential {
   provider: Option<Box<dyn GitProvider>>,
   secrets_path: Option<PathBuf>,
+  global_secrets_path: Option<PathBuf>,
   key: String,
   env_var: Option<String>,
 }
@@ -25,10 +26,11 @@ impl Credential {
   pub fn new(
     provider: Option<Box<dyn GitProvider>>,
     secrets_path: Option<PathBuf>,
+    global_secrets_path: Option<PathBuf>,
     key: String,
     env_var: Option<String>,
   ) -> Self {
-    Credential { provider, secrets_path, key, env_var }
+    Credential { provider, secrets_path, global_secrets_path, key, env_var }
   }
 
   /// Ensure the repo exists on the provider, creating it if absent
@@ -50,7 +52,7 @@ impl Credential {
       return Ok(SecretString::from(val));
     }
 
-    // 2. Secrets file
+    // 2. Workspace secrets file
     if let Some(path) = &self.secrets_path
       && path.exists()
       && let Ok(token) = read_token_from_file(path, &self.key)
@@ -58,13 +60,21 @@ impl Credential {
       return Ok(SecretString::from(token));
     }
 
-    // 3. Git config: gitlas.remote.<name>.token
+    // 3. Global secrets file
+    if let Some(path) = &self.global_secrets_path
+      && path.exists()
+      && let Ok(token) = read_token_from_file(path, &self.key)
+    {
+      return Ok(SecretString::from(token));
+    }
+
+    // 4. Git config: gitlas.remote.<name>.token
     let git_config_key = format!("gitlas.remote.{}.token", self.key);
     if let Some(val) = read_git_config(&git_config_key) {
       return Ok(SecretString::from(val));
     }
 
-    // 4. Provider CLI tool config (gh, glab, tea, bb)
+    // 5. Provider CLI tool config (gh, glab, tea, bb)
     if let Some(provider) = &self.provider
       && let Some(val) = provider.read_cli_token()
     {

@@ -12,7 +12,10 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use crate::git;
-use crate::gitlas::constants::{CONFIG_FILE, GITLAS_DIR, GITLAS_LOCAL_PATH, LOCAL_GITIGNORE};
+use crate::gitlas::constants::{
+  CONFIG_FILE, CONFIG_HEADER, GITLAS_DIR, GITLAS_LOCAL_PATH, GLOBAL_CONFIG_SUBDIR,
+  GLOBAL_SECRETS_FILE, LOCAL_GITIGNORE, SECRETS_HEADER,
+};
 use crate::gitlas::resolve::resolve_config;
 use crate::gitlas::types::{
   RawGitRemote, RawRemoteConfig, RawSecretsFile, RawWorkspaceConfig,
@@ -24,6 +27,7 @@ use crate::types::WorkspaceConfig;
 pub struct Workspace {
   root: PathBuf,
   config: RawWorkspaceConfig,
+  global_secrets_path: Option<PathBuf>,
 }
 
 impl Workspace {
@@ -51,20 +55,26 @@ hint: run `git las init` to create one"#
 
     let config_path = root.join(GITLAS_DIR).join(CONFIG_FILE);
     // Default to empty config if the file does not exist yet
-    let config: RawWorkspaceConfig = if config_path.exists() {
+    let mut config: RawWorkspaceConfig = if config_path.exists() {
       toml::from_str(&fs::read_to_string(&config_path)?)?
     } else {
       RawWorkspaceConfig::default()
     };
 
+    // Load global config and merge: workspace remotes override global ones by name
+    let (global_remotes, global_secrets_path) = load_global()?;
+    for (name, remote) in global_remotes {
+      config.remotes.entry(name).or_insert(remote);
+    }
+
     validate_config(&config)?; // Callers can assume the config is valid
 
-    Ok(Workspace { root, config })
+    Ok(Workspace { root, config, global_secrets_path })
   }
 
   /// Resolve raw config into fully-computed paths and URLs
   pub fn config(&self) -> WorkspaceConfig {
-    resolve_config(&self.config, &self.root)
+    resolve_config(&self.config, &self.root, self.global_secrets_path.as_deref())
   }
 
   /// Return the workspace root path
@@ -214,11 +224,25 @@ hint: run `git las init` to create one"#
     Ok(())
   }
 
-  /// Write a token for a global remote to the secrets file
+  /// Write a token for a remote to the global secrets file (shared across workspaces)
+  pub fn write_global_token(&self, remote_name: &str, token: String) -> anyhow::Result<()> {
+    let Some(home) = std::env::var("HOME").ok().map(PathBuf::from) else {
+      anyhow::bail!("HOME is not set");
+    };
+    let dir = home.join(GLOBAL_CONFIG_SUBDIR);
+    let path = dir.join(GLOBAL_SECRETS_FILE);
+    self.write_token_to(&path, remote_name, token)
+  }
+
+  /// Write a token for a global remote to the workspace-local secrets file
   pub fn write_token(&self, remote_name: &str, token: String) -> anyhow::Result<()> {
     let path = self.root.join(GITLAS_LOCAL_PATH).join("secrets.toml");
+    self.write_token_to(&path, remote_name, token)
+  }
+
+  fn write_token_to(&self, path: &Path, remote_name: &str, token: String) -> anyhow::Result<()> {
     let mut secrets: RawSecretsFile = if path.exists() {
-      toml::from_str(&fs::read_to_string(&path)?)?
+      toml::from_str(&fs::read_to_string(path)?)?
     } else {
       RawSecretsFile::default()
     };
@@ -228,7 +252,7 @@ hint: run `git las init` to create one"#
     if let Some(parent) = path.parent() {
       fs::create_dir_all(parent)?;
     }
-    write_secrets_file(&path, &toml::to_string_pretty(&secrets)?)?;
+    write_secrets_file(path, &format!("{SECRETS_HEADER}{}", toml::to_string_pretty(&secrets)?))?;
     Ok(())
   }
 
@@ -257,7 +281,7 @@ hint: run `git las init` to create one"#
       },
       ..Default::default()
     };
-    fs::write(&config_path, toml::to_string_pretty(&config)?)?;
+    fs::write(&config_path, format!("{CONFIG_HEADER}{}", toml::to_string_pretty(&config)?))?;
 
     // Turns `.gitlas/` into the versioned meta-repo
     git::init(&gitlas_dir)?;
@@ -272,9 +296,30 @@ hint: run `git las init` to create one"#
     if let Some(parent) = path.parent() {
       fs::create_dir_all(parent)?;
     }
-    fs::write(path, toml::to_string_pretty(&self.config)?)?;
+    fs::write(path, format!("{CONFIG_HEADER}{}", toml::to_string_pretty(&self.config)?))?;
     Ok(())
   }
+}
+
+/// Load global remotes and return the global secrets path (if the config dir exists)
+fn load_global() -> anyhow::Result<(std::collections::HashMap<String, RawRemoteConfig>, Option<PathBuf>)> {
+  let Some(home) = std::env::var("HOME").ok().map(PathBuf::from) else {
+    return Ok((Default::default(), None));
+  };
+
+  let dir = home.join(GLOBAL_CONFIG_SUBDIR);
+  let secrets_path = dir.join(GLOBAL_SECRETS_FILE);
+
+  let config_path = dir.join(CONFIG_FILE);
+  if !config_path.exists() {
+    return Ok((Default::default(), Some(secrets_path)));
+  }
+
+  let config: RawWorkspaceConfig = toml::from_str(&fs::read_to_string(&config_path)?)?;
+  validate_config(&config)?;
+
+  let global_secrets = if secrets_path.exists() { Some(secrets_path) } else { None };
+  Ok((config.remotes, global_secrets))
 }
 
 // Write secrets atomically: temp file with 0o600 then rename, so the content is never visible at the target path with wrong permissions
