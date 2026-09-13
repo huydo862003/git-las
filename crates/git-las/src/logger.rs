@@ -7,10 +7,6 @@ pub fn print_ok(message: &str) {
   println!("{} {}", "ok".green(), message);
 }
 
-pub fn print_err(message: &str) {
-  eprintln!("{} {}", "err".red(), message);
-}
-
 pub fn print_skip(message: &str) {
   println!("{} {}", "skip".yellow(), message);
 }

@@ -43,6 +43,8 @@
             "-p"
             "git-las"
           ];
+          nativeBuildInputs = with pkgs; [ pkg-config ];
+          buildInputs = with pkgs; [ openssl ];
           doCheck = false;
         };
       in
@@ -57,6 +59,8 @@
             cargo-watch
             nodejs
             pnpm
+            pkg-config
+            openssl
           ];
         };
       }

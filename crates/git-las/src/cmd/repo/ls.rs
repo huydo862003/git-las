@@ -1,11 +1,11 @@
 //! git las repo ls
 //! List all tracked repos and their remotes
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run() -> anyhow::Result<()> {
-  let workspace = gitlas::load_workspace()?;
+  let workspace = Workspace::load()?;
   let config = workspace.config();
 
   if config.repos.is_empty() {

@@ -1,91 +1,141 @@
-use std::{collections::HashMap, path::Path};
+use std::collections::HashMap;
+use std::path::Path;
 
-use crate::gitlas::{
-  GITLAS_DIR, ResolvedConfig, ResolvedMeta, ResolvedRemote, ResolvedRemoteEntry, ResolvedRepo,
-  types::raw::{RawConfig, RawRemote, RawRemoteConfig},
-};
+use crate::gitlas::constants::{GITLAS_DIR, SECRETS_PATH};
+use crate::gitlas::cred::Credential;
+use crate::gitlas::providers::{self, GitProvider};
+use crate::gitlas::types::{RawGitRemote, RawRemoteConfig, RawWorkspaceConfig};
+use crate::types::{GitRemote, GitRemoteProvider, GitRepository, RemoteConfig, WorkspaceConfig, WorkspaceMeta};
 
-pub fn resolve_config(config: &RawConfig, workspace_root: &Path) -> ResolvedConfig {
+pub fn resolve_config(config: &RawWorkspaceConfig, workspace_root: &Path) -> WorkspaceConfig {
   let meta_name = config.meta.repo.as_deref().unwrap_or("gitlas");
+  let secrets_path = workspace_root.join(SECRETS_PATH);
 
-  let meta = ResolvedMeta {
-    name: meta_name.to_string(),
+  let remotes = resolve_global_remotes(&config.remotes, &secrets_path);
+
+  let meta = WorkspaceMeta {
+    name: meta_name.parse().expect("validate_config guarantees valid repo name"),
     path: workspace_root.join(GITLAS_DIR),
-    primary: resolve_primary(&config.remotes, &config.meta.primary, meta_name),
-    push_remotes: resolve_push_remotes(&config.remotes, &config.meta.remotes, meta_name),
+    primary: resolve_primary(&config.remotes, &config.meta.primary, meta_name, &secrets_path),
+    push_remotes: resolve_push_remotes(&config.remotes, &config.meta.remotes, meta_name, &secrets_path),
   };
 
-  let repos = config
+  let mut repos: Vec<GitRepository> = config
     .repo
     .iter()
-    .map(|(name, repo)| ResolvedRepo {
-      name: name.clone(),
+    .map(|(name, repo)| GitRepository {
+      name: name.parse().expect("validate_config guarantees valid repo name"),
       path: workspace_root.join(name),
-      primary: resolve_primary(&config.remotes, &repo.primary, name),
-      push_remotes: resolve_push_remotes(&config.remotes, &repo.remotes, name),
+      primary: resolve_primary(&config.remotes, &repo.primary, name, &secrets_path),
+      push_remotes: resolve_push_remotes(&config.remotes, &repo.remotes, name, &secrets_path),
     })
     .collect();
+  repos.sort_by(|left, right| left.name.as_str().cmp(right.name.as_str()));
 
-  let remotes = config
-    .remotes
-    .iter()
-    .map(|(name, remote)| ResolvedRemoteEntry {
-      name: name.clone(),
-      url: remote.url.clone(),
-      user: remote.user.clone(),
-    })
-    .collect();
-
-  ResolvedConfig {
-    meta,
-    repos,
-    remotes,
-  }
+  WorkspaceConfig { meta, remotes, repos }
 }
 
-pub fn resolve_primary(
-  global_remotes: &HashMap<String, RawRemoteConfig>,
-  primary: &Option<RawRemote>,
-  repo_name: &str,
-) -> Option<ResolvedRemote> {
-  primary.as_ref().map(|raw| {
-    let global = &global_remotes[&raw.name];
-    ResolvedRemote {
-      name: raw.name.clone(),
-      url: resolve_url(global, raw, repo_name),
+fn make_cred(name: &str, secrets_path: &Path, provider: Option<Box<dyn GitProvider>>) -> Credential {
+  let env_var = format!("GITLAS_TOKEN_{}", name.to_uppercase().replace('-', "_"));
+  Credential::new(provider, Some(secrets_path.to_path_buf()), name.to_string(), Some(env_var))
+}
+
+fn build_provider(provider: &GitRemoteProvider, base_url: &str) -> Option<Box<dyn GitProvider>> {
+  let host = extract_host(base_url);
+  Some(match provider {
+    GitRemoteProvider::GitHub => Box::new(providers::GitHub { host }) as Box<dyn GitProvider>,
+    GitRemoteProvider::GitLab => Box::new(providers::GitLab { host }),
+    GitRemoteProvider::Gitea | GitRemoteProvider::Forgejo => {
+      Box::new(providers::Gitea { base_url: base_url.to_string() })
     }
+    GitRemoteProvider::Bitbucket => Box::new(providers::Bitbucket),
+    GitRemoteProvider::Other(_) => return None,
   })
 }
 
-pub fn resolve_push_remotes(
+fn extract_host(url: &str) -> String {
+  url
+    .trim_start_matches("https://")
+    .trim_start_matches("http://")
+    .split('/')
+    .next()
+    .unwrap_or(url)
+    .to_string()
+}
+
+fn resolve_global_remotes(
   global_remotes: &HashMap<String, RawRemoteConfig>,
-  remotes: &[RawRemote],
+  secrets_path: &Path,
+) -> Vec<RemoteConfig> {
+  let mut remotes: Vec<RemoteConfig> = global_remotes
+    .iter()
+    .map(|(name, raw)| {
+      let provider: GitRemoteProvider = name.parse().expect("validate_config guarantees valid provider name");
+      let cli_provider = build_provider(&provider, &raw.url);
+      RemoteConfig {
+        name: provider,
+        url: raw.url.parse().expect("validate_config guarantees valid URL"),
+        user: raw.user.parse().expect("validate_config guarantees valid username"),
+        cred: make_cred(name, secrets_path, cli_provider),
+      }
+    })
+    .collect();
+  remotes.sort_by(|left, right| left.name.as_str().cmp(right.name.as_str()));
+  remotes
+}
+
+fn build_git_remote(name: &str, full_url: &str, user: &str, base_url: &str, secrets_path: &Path) -> GitRemote {
+  let provider: GitRemoteProvider = name.parse().expect("validate_config guarantees valid provider name");
+  let cli_provider = build_provider(&provider, base_url);
+  GitRemote {
+    name: provider,
+    url: full_url.parse().expect("URL built from validated parts"),
+    user: user.parse().expect("validate_config guarantees valid username"),
+    cred: make_cred(name, secrets_path, cli_provider),
+  }
+}
+
+fn resolve_primary(
+  global_remotes: &HashMap<String, RawRemoteConfig>,
+  primary: &Option<RawGitRemote>,
   repo_name: &str,
-) -> Vec<ResolvedRemote> {
+  secrets_path: &Path,
+) -> Option<GitRemote> {
+  primary.as_ref().map(|raw| {
+    let global = global_remotes.get(&raw.name).expect("validate_config guarantees remote exists");
+    let user = raw.user.as_deref().unwrap_or(&global.user);
+    let repo = raw.repo.as_deref().unwrap_or(repo_name);
+    let full_url = format!("{}/{}/{}.git", global.url, user, repo);
+    build_git_remote(&raw.name, &full_url, user, &global.url, secrets_path)
+  })
+}
+
+fn resolve_push_remotes(
+  global_remotes: &HashMap<String, RawRemoteConfig>,
+  remotes: &[RawGitRemote],
+  repo_name: &str,
+  secrets_path: &Path,
+) -> Vec<GitRemote> {
   if !remotes.is_empty() {
     return remotes
       .iter()
       .map(|raw| {
-        let global = &global_remotes[&raw.name];
-        ResolvedRemote {
-          name: raw.name.clone(),
-          url: resolve_url(global, raw, repo_name),
-        }
+        let global = global_remotes.get(&raw.name).expect("validate_config guarantees remote exists");
+        let user = raw.user.as_deref().unwrap_or(&global.user);
+        let repo = raw.repo.as_deref().unwrap_or(repo_name);
+        let full_url = format!("{}/{}/{}.git", global.url, user, repo);
+        build_git_remote(&raw.name, &full_url, user, &global.url, secrets_path)
       })
       .collect();
   }
   // Fall back to all global remotes
-  global_remotes
+  let mut result: Vec<GitRemote> = global_remotes
     .iter()
-    .map(|(name, global)| ResolvedRemote {
-      name: name.clone(),
-      url: format!("{}/{}/{}.git", global.url, global.user, repo_name),
+    .map(|(name, global)| {
+      let full_url = format!("{}/{}/{}.git", global.url, global.user, repo_name);
+      build_git_remote(name, &full_url, &global.user, &global.url, secrets_path)
     })
-    .collect()
-}
-
-pub fn resolve_url(global: &RawRemoteConfig, raw: &RawRemote, default_repo_name: &str) -> String {
-  let user = raw.user.as_deref().unwrap_or(&global.user);
-  let repo = raw.repo.as_deref().unwrap_or(default_repo_name);
-  format!("{}/{}/{}.git", global.url, user, repo)
+    .collect();
+  result.sort_by(|left, right| left.name.as_str().cmp(right.name.as_str()));
+  result
 }

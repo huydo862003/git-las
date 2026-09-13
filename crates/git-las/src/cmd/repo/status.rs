@@ -2,11 +2,11 @@
 //! Show clean/dirty status of all tracked repos
 
 use crate::git;
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run() -> anyhow::Result<()> {
-  let workspace = gitlas::load_workspace()?;
+  let workspace = Workspace::load()?;
   let config = workspace.config();
 
   if config.repos.is_empty() {
@@ -20,12 +20,7 @@ pub fn run() -> anyhow::Result<()> {
       continue;
     }
 
-    let output = git::get_status_short(&repo.path)?;
-    let label = if output.trim().is_empty() {
-      "clean"
-    } else {
-      "dirty"
-    };
+    let label = if git::is_dirty(&repo.path)? { "dirty" } else { "clean" };
     logger::print_info(&format!("{}  {label}", repo.name));
   }
 

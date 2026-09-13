@@ -1,11 +1,11 @@
 //! git las remote ls
 //! List all configured remotes
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run() -> anyhow::Result<()> {
-  let workspace = gitlas::load_workspace()?;
+  let workspace = Workspace::load()?;
   let config = workspace.config();
 
   if config.remotes.is_empty() {
@@ -14,7 +14,8 @@ pub fn run() -> anyhow::Result<()> {
   }
 
   for remote in &config.remotes {
-    logger::print_info(&format!("{}  {}  {}", remote.name, remote.url, remote.user));
+    let token_status = if remote.cred.read().is_ok() { "token: set" } else { "token: not set" };
+    logger::print_info(&format!("{}  {}  {}  {token_status}", remote.name, remote.url, remote.user));
   }
 
   Ok(())

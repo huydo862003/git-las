@@ -4,11 +4,12 @@
 use std::path::Path;
 
 use crate::git;
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
+use crate::types::GitRemote;
 
 pub fn run() -> anyhow::Result<()> {
-  let workspace = gitlas::load_workspace()?;
+  let workspace = Workspace::load()?;
   let config = workspace.config();
 
   if config.repos.is_empty() {
@@ -21,7 +22,7 @@ pub fn run() -> anyhow::Result<()> {
 
   // Push each tracked repo to its remotes
   for repo in &config.repos {
-    progress.set_message(repo.name.clone());
+    progress.set_message(repo.name.to_string());
 
     if !repo.path.exists() {
       logger::print_skip(&format!("{}: not cloned locally", repo.name));
@@ -46,15 +47,11 @@ pub fn run() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn push_remotes(name: &str, remotes: &[gitlas::ResolvedRemote], path: &Path) -> anyhow::Result<()> {
+fn push_remotes(name: &str, remotes: &[GitRemote], path: &Path) -> anyhow::Result<()> {
   for remote in remotes {
-    git::ensure_remote(path, &remote.name, &remote.url)?;
-
-    if git::push_all(path, &remote.name)? {
-      logger::print_ok(&format!("{name} -> {}: push", remote.name));
-    } else {
-      logger::print_err(&format!("{name} -> {}: push failed", remote.name));
-    }
+    git::check_remote_exists(path, remote.name.as_str(), &remote.url)?;
+    git::push(path, remote.name.as_str(), &remote.cred)?;
+    logger::print_ok(&format!("{name} -> {}: push", remote.name));
   }
   Ok(())
 }

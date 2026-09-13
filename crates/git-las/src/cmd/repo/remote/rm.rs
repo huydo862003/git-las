@@ -1,11 +1,11 @@
 //! git las repo remote rm
 //! Remove a remote from the current repo
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run(remote: String) -> anyhow::Result<()> {
-  let mut workspace = gitlas::load_workspace()?;
+  let mut workspace = Workspace::load()?;
   let name = workspace.get_current_repo_name()?;
 
   workspace.remove_repo_remote(&name, &remote)?;

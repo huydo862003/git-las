@@ -1,11 +1,11 @@
 //! git las repo rm
 //! Stop tracking a repo
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run() -> anyhow::Result<()> {
-  let mut workspace = gitlas::load_workspace()?;
+  let mut workspace = Workspace::load()?;
   let name = workspace.get_current_repo_name()?;
 
   workspace.remove_repo(&name)?;

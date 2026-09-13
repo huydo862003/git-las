@@ -3,6 +3,7 @@ mod cmd;
 mod git;
 mod gitlas;
 mod logger;
+mod types;
 
 use clap::Parser;
 

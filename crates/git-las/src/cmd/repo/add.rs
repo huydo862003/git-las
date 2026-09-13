@@ -4,11 +4,11 @@
 use std::path::{Path, PathBuf};
 
 use crate::git;
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run(path: Option<String>) -> anyhow::Result<()> {
-  let mut workspace = gitlas::load_workspace()?;
+  let mut workspace = Workspace::load()?;
   let root = workspace.root().to_path_buf();
 
   let (name, source_path) = match path {
@@ -30,7 +30,7 @@ pub fn run(path: Option<String>) -> anyhow::Result<()> {
 
   let repo_path = root.join(&name);
 
-  if source_path.exists() && !git::is_git_repo(&source_path) {
+  if source_path.exists() && !git::is_dir_git_repo(&source_path) {
     anyhow::bail!("{} is not a git repository", source_path.display());
   }
 

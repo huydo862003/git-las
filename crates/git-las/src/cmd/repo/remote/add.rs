@@ -1,7 +1,7 @@
 //! git las repo remote add
 //! Add a remote to the current repo, optionally setting it as primary
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run(
@@ -10,7 +10,7 @@ pub fn run(
   user_override: Option<String>,
   primary: bool,
 ) -> anyhow::Result<()> {
-  let mut workspace = gitlas::load_workspace()?;
+  let mut workspace = Workspace::load()?;
   let name = workspace.get_current_repo_name()?;
 
   let message = if primary {

@@ -1,7 +1,7 @@
 //! git las repo set primary
 //! Set the primary remote for the current repo
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 use crate::logger;
 
 pub fn run(
@@ -9,7 +9,7 @@ pub fn run(
   repo_name_override: Option<String>,
   user_override: Option<String>,
 ) -> anyhow::Result<()> {
-  let mut workspace = gitlas::load_workspace()?;
+  let mut workspace = Workspace::load()?;
   let name = workspace.get_current_repo_name()?;
 
   workspace.set_repo_primary(&name, remote.clone(), repo_name_override, user_override)?;

@@ -3,17 +3,12 @@
 
 use std::io::{self, Write};
 
-use crate::gitlas;
+use crate::gitlas::Workspace;
 
 pub fn run() -> anyhow::Result<()> {
   let cwd = std::env::current_dir()?;
-
-  if cwd.join(".gitlas").exists() {
-    anyhow::bail!("workspace already initialized at {}", cwd.display());
-  }
-
   let meta_repo = prompt_meta_repo_name()?;
-  gitlas::init_dir(&cwd, &meta_repo)?;
+  Workspace::init(&cwd, &meta_repo)?;
 
   println!("initialized git-las workspace at {}", cwd.display());
   println!("meta-repo name: {meta_repo}");

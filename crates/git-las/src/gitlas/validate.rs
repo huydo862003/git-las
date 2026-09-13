@@ -1,8 +1,19 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::gitlas::types::raw::{RawConfig, RawRemote, RawRemoteConfig};
+use crate::gitlas::types::{RawGitRemote, RawRemoteConfig, RawWorkspaceConfig};
+use crate::types::{GitRemoteProvider, GitRepositoryName, GitUserName};
 
-pub fn validate_config(config: &RawConfig) -> anyhow::Result<()> {
+pub fn validate_config(config: &RawWorkspaceConfig) -> anyhow::Result<()> {
+  for (name, remote) in &config.remotes {
+    name.parse::<GitRemoteProvider>()?;
+    remote.url.parse::<crate::types::GitRemoteUrl>()?;
+    remote.user.parse::<GitUserName>()?;
+  }
+
+  for name in config.repo.keys() {
+    name.parse::<GitRepositoryName>()?;
+  }
+
   if let Some(primary) = &config.meta.primary
     && !config.remotes.contains_key(&primary.name)
   {
@@ -27,9 +38,9 @@ pub fn validate_config(config: &RawConfig) -> anyhow::Result<()> {
   Ok(())
 }
 
-pub fn validate_remote_list(
+fn validate_remote_list(
   context: &str,
-  remotes: &[RawRemote],
+  remotes: &[RawGitRemote],
   global_remotes: &HashMap<String, RawRemoteConfig>,
 ) -> anyhow::Result<()> {
   let mut seen = HashSet::new();
