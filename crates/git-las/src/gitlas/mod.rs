@@ -83,11 +83,12 @@ hint: run `git las init` to create one"#
   }
 
   /// Register a new global remote
-  pub fn add_remote(&mut self, name: String, url: String, user: String) {
-    self
-      .config
-      .remotes
-      .insert(name, RawRemoteConfig { url, user });
+  pub fn add_remote(&mut self, name: String, url: String, user: String, force: bool) -> anyhow::Result<()> {
+    if !force && self.config.remotes.contains_key(&name) {
+      anyhow::bail!("remote '{name}' already exists");
+    }
+    self.config.remotes.insert(name, RawRemoteConfig { url, user });
+    Ok(())
   }
 
   /// Remove a global remote, refusing if any repo still references it
@@ -120,9 +121,13 @@ hint: run `git las init` to create one"#
     Ok(())
   }
 
-  /// Track a repo in the workspace (no-op if already tracked)
-  pub fn add_repo(&mut self, name: String) {
-    self.config.repo.entry(name).or_default();
+  /// Track a repo in the workspace
+  pub fn add_repo(&mut self, name: String, force: bool) -> anyhow::Result<()> {
+    if !force && self.config.repo.contains_key(&name) {
+      anyhow::bail!("repo '{name}' is already tracked");
+    }
+    self.config.repo.insert(name, Default::default());
+    Ok(())
   }
 
   /// Stop tracking a repo
@@ -133,16 +138,16 @@ hint: run `git las init` to create one"#
     Ok(())
   }
 
-  /// Add (or replace) a push remote on a repo
+  /// Add a push remote on a repo
   pub fn add_repo_remote(
     &mut self,
     repo_name: &str,
     remote_name: String,
     repo_override: Option<String>,
     user_override: Option<String>,
+    force: bool,
   ) -> anyhow::Result<()> {
     if !self.config.remotes.contains_key(&remote_name) {
-      // Must exist to be resolvable
       anyhow::bail!("remote '{remote_name}' not found - add it with `git las remote add`");
     }
 
@@ -152,7 +157,10 @@ hint: run `git las init` to create one"#
       .get_mut(repo_name)
       .ok_or_else(|| anyhow::anyhow!("repo '{repo_name}' is not tracked"))?;
 
-    repo.remotes.retain(|existing| existing.name != remote_name); // Replace if already present
+    if !force && repo.remotes.iter().any(|existing| existing.name == remote_name) {
+      anyhow::bail!("remote '{remote_name}' is already set on repo '{repo_name}'");
+    }
+    repo.remotes.retain(|existing| existing.name != remote_name);
     repo.remotes.push(RawGitRemote {
       name: remote_name,
       repo: repo_override,

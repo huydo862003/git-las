@@ -44,6 +44,9 @@ pub enum RemoteCommand {
     /// Auth token (optional, stored in secrets.toml)
     #[arg(long)]
     token: Option<String>,
+    /// Overwrite if the remote already exists
+    #[arg(long)]
+    force: bool,
   },
 
   /// List configured remotes
@@ -62,6 +65,9 @@ pub enum RepoCommand {
   Add {
     /// Path to a local git repo outside the workspace
     path: Option<String>,
+    /// Overwrite if the repo is already tracked
+    #[arg(long)]
+    force: bool,
   },
 
   /// Stop tracking the current directory as a repo
@@ -97,6 +103,9 @@ pub enum RepoRemoteCommand {
     /// Set as primary source
     #[arg(long)]
     primary: bool,
+    /// Overwrite if the remote is already set on this repo
+    #[arg(long)]
+    force: bool,
   },
 
   /// Remove a remote from the current repo

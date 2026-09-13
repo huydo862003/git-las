@@ -3,11 +3,19 @@
 
 use std::path::{Path, PathBuf};
 
+use bitflags::bitflags;
+
 use crate::git;
 use crate::gitlas::Workspace;
 use crate::logger;
 
-pub fn run(path: Option<String>) -> anyhow::Result<()> {
+bitflags! {
+  pub struct Flags: u32 {
+    const FORCE = 1 << 0;
+  }
+}
+
+pub fn run(path: Option<String>, flags: Flags) -> anyhow::Result<()> {
   let mut workspace = Workspace::load()?;
   let root = workspace.root().to_path_buf();
 
@@ -43,7 +51,7 @@ pub fn run(path: Option<String>) -> anyhow::Result<()> {
     logger::print_info(&format!("symlinked {name} -> {}", source_path.display()));
   }
 
-  workspace.add_repo(name.clone());
+  workspace.add_repo(name.clone(), flags.contains(Flags::FORCE))?;
   workspace.save()?;
 
   logger::print_ok(&format!("tracking '{name}'"));

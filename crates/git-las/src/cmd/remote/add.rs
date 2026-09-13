@@ -1,13 +1,21 @@
 //! git las remote add
 //! Register a new remote with a base URL and username
 
+use bitflags::bitflags;
+
 use crate::gitlas::Workspace;
 use crate::logger;
 
-pub fn run(name: String, url: String, user: String, token: Option<String>) -> anyhow::Result<()> {
+bitflags! {
+  pub struct Flags: u32 {
+    const FORCE = 1 << 0;
+  }
+}
+
+pub fn run(name: String, url: String, user: String, token: Option<String>, flags: Flags) -> anyhow::Result<()> {
   let mut workspace = Workspace::load()?;
 
-  workspace.add_remote(name.clone(), url, user);
+  workspace.add_remote(name.clone(), url, user, flags.contains(Flags::FORCE))?;
 
   if let Some(token) = token {
     workspace.write_token(&name, token)?;
